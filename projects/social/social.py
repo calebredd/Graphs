@@ -1,3 +1,5 @@
+import random 
+
 class User:
     def __init__(self, name):
         self.name = name
@@ -28,6 +30,11 @@ class SocialGraph:
         self.users[self.last_id] = User(name)
         self.friendships[self.last_id] = set()
 
+    def fisher_yates_shuffle(self, l):
+        for i in range(0,len(l)):
+            random_index = random.randint(i, len(l) - 1)
+            l[random_index], l[i] = l[i], l[random_index]
+            
     def populate_graph(self, num_users, avg_friendships):
         """
         Takes a number of users and an average number of friendships
@@ -45,10 +52,29 @@ class SocialGraph:
         # !!!! IMPLEMENT ME
 
         # Add users
+        for user in range(1, num_users+1):
+            self.add_user(user)
+            #starts at 1, up to and including num_users
+        friendship_combinations = []
+        for user in range(1, self.last_id + 1):
+            for friend in range(user+1, self.last_id+1):
+                friendship_combinations.append((user, friend))
+            #shuffle the list
+        self.fisher_yates_shuffle(friendship_combinations)
+
+        total_friendships = num_users * avg_friendships
+
+        friends_to_make = friendship_combinations[:(total_friendships // 2)]
 
         # Create friendships
+        for friendship in friends_to_make:
+            self.add_friendship(friendship[0], friendship[1])
 
-    def get_all_social_paths(self, user_id):
+    def get_shortest_path(self, user_id, visited={}, path=[]):
+        if len(path) < 1:
+            path.append(user_id)
+        if user_id not in visited:
+            visited[user_id] = path
         """
         Takes a user's user_id as an argument
 
@@ -57,8 +83,40 @@ class SocialGraph:
 
         The key is the friend's ID and the value is the path.
         """
-        visited = {}  # Note that this is a dictionary, not a set
+        # visited = {}  # Note that this is a dictionary, not a set
         # !!!! IMPLEMENT ME
+        for f in self.friendships[user_id]:
+            if f in visited and len(path)+1 < len(visited[f]):
+                visited[f] = path+[f]
+            elif f not in visited and f is not None:
+                visited[f] = path+[f]
+                visited = self.get_all_social_paths(f, visited, path+[f])
+        return visited
+
+    def get_all_social_paths(self, user_id, visited={}, path=[]):
+        if len(path) < 1:
+            path.append(user_id)
+        if user_id not in visited:
+            visited[user_id] = path
+        """
+        Takes a user's user_id as an argument
+
+        Returns a dictionary containing every user in that user's
+        extended network with the shortest friendship path between them.
+
+        The key is the friend's ID and the value is the path.
+        """
+        # visited = {}  # Note that this is a dictionary, not a set
+        # !!!! IMPLEMENT ME
+        for f in self.friendships[user_id]:
+            if f in visited: 
+                if len(path)+1 < len(visited[f]):
+                    visited[f] = path+[f]
+                # else:
+                visited = self.get_shortest_path(f, visited, path+[f])
+            elif f not in visited and f is not None:
+                visited[f] = path+[f]
+                visited = self.get_all_social_paths(f, visited, path+[f])
         return visited
 
 
@@ -66,5 +124,6 @@ if __name__ == '__main__':
     sg = SocialGraph()
     sg.populate_graph(10, 2)
     print(sg.friendships)
-    connections = sg.get_all_social_paths(1)
+    connections = sg.get_all_social_paths(10)
+    print('')
     print(connections)
